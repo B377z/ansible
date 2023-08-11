@@ -1,0 +1,38 @@
+[all]
+web01
+db01
+app01
+mc01
+rmq01
+atc01
+
+[controller]
+tfdhomesvr ansible_user=root
+
+[webservers]
+web01 ansible_user=root
+
+[databases]
+db01 ansible_user=root
+
+[tomcat]
+app01 ansible_user=root 
+
+[caching]
+mc01 ansible_user=root
+
+[messaging]
+rmq01 ansible_user=root
+
+[ubuntu]
+web01
+
+[centos]
+db01
+app01
+mc01
+rmq01
+
+[suse]
+atc01
+web01

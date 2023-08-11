@@ -1,0 +1,11 @@
+---
+- name: CIS Baseline
+  hosts: caching
+  gather_facts: true
+  tasks:
+    - name: Create Snapshot
+      community.general.vbox_snapshot:
+        vm: mc01
+        name: mc01-snap-0908
+        state: present
+      delegate_to: localhost

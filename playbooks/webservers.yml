@@ -1,0 +1,7 @@
+---
+- hosts: atc01
+  tasks:
+    - name: install apache with latest software
+      ansible.builtin.package:
+        name: apache2
+        state: latest

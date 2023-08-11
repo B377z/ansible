@@ -1,0 +1,14 @@
+---
+- hosts: mc01
+  gather_facts: true
+  become: yes
+  tasks:
+    - name: Update yum cache
+      ansible.builtin.yum:
+        update_cache: yes
+    
+    - name: Update System with latest packages
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+      

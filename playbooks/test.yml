@@ -1,0 +1,10 @@
+---
+- hosts: localhost
+  tasks:
+    - name: Run the Ansible command again.
+      ansible.builtin.debug:
+        msg: Ansible is fun
+
+    - name: Test connectivity
+      ansible.builtin.ping:
+        
