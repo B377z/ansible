@@ -1,0 +1,14 @@
+---
+- name: Get cpu information from SUSE linux servers
+  hosts: suse
+  gather_facts: yes
+  tasks:
+    - name: Fetch CPU information
+      ansible.builtin.shell:
+        cmd: lscpu
+      register: cpu_info
+    
+    - name: Print CPU information
+      ansible.builtin.debug:
+        var: cpu_info
+        
