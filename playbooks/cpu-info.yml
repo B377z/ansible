@@ -10,5 +10,5 @@
     
     - name: Print CPU information
       ansible.builtin.debug:
-        var: cpu_info
+        var: cpu_info.stdout_lines
         
