@@ -1,0 +1,11 @@
+---
+- name: Operations Playbook for Database Servers
+  hosts: mc01
+  become: true
+  roles: 
+    - memcache_setup
+        
+
+    
+    
+    

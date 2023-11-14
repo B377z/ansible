@@ -1,0 +1,80 @@
+---
+- name: Ensure host entries are set
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item.ip }} {{ item.hostname }}"
+    state: present
+  loop: "{{ ip_hostname_mapping }}"
+
+- name: Check if EPEL repo is installed
+  ansible.builtin.command: 'yum repolist enabled | grep epel'
+  register: epel_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Ensure EPEL Repository is installed
+  ansible.builtin.yum:
+    name: 'epel-release'
+    state: present
+  when: epel_check.rc != 0  
+    
+- name: Ensure CentOS 7 is updated
+  ansible.builtin.yum:
+    name: '*'
+    security: true
+    state: latest
+        
+- name: Install MariaDB repo.
+  ansible.builtin.yum_repository:
+    name: mariadb
+    description: MariaDB
+    baseurl: http://yum.mariadb.org/{{ mysql_version }}/centos7-amd64
+    gpgkey: https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+    gpgcheck: true
+
+- name: Install MariaDB server and client
+  ansible.builtin.yum:
+    name:
+      - MySQL-python
+      - expect
+      - MariaDB-server
+      - MariaDB-client
+    state: present
+
+- name: Run the script using command module
+  ansible.builtin.command: /home/vagrant/dbscripts/mysql.sh
+  register: result
+  ignore_errors: true
+  changed_when: "result.rc == 0"
+  failed_when: "result.stderr != '' and 'database exists' not in result.stderr"
+  notify: Restart MariaDB
+
+- name: Ensure firewalld is started and enabled
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Get active firewall zones
+  ansible.builtin.command:
+    cmd: firewall-cmd --get-active-zones
+  register: active_zones
+  changed_when: false
+      
+- name: Debug active zones
+  ansible.builtin.debug:
+    var: active_zones.stdout_lines
+
+- name: Allow MariaDB access on port 3306
+  ansible.builtin.firewalld:
+    port: 3306/tcp
+    zone: public
+    permanent: true
+    state: enabled
+
+- name: Reload firewall for changes to take effect
+  ansible.builtin.command:
+    cmd: firewall-cmd --reload
+  notify: Restart MariaDB
+
+# tasks file for roles/mysql_setup

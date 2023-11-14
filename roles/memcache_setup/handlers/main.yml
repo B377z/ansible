@@ -1,0 +1,11 @@
+---
+- name: restart memcached
+  ansible.builtin.service:
+    name: memcached
+    state: restarted
+
+- name: reload firewall
+  ansible.builtin.command:
+    cmd: firewall-cmd --reload
+...
+# handlers file for roles/memcache_setup

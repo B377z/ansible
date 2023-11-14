@@ -1,0 +1,7 @@
+---
+- name: MYSQL database setup
+  hosts: db01 
+  become: true
+  tasks:
+  roles:
+    - mysql_setup

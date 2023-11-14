@@ -1,0 +1,32 @@
+---
+- name: Install EPEL Repository
+  ansible.builtin.yum:
+    name: epel-release
+    state: present
+
+- name: Install Memcached
+  ansible.builtin.yum:
+    name: memcached
+    state: present
+
+- name: Start and enable Memcached service
+  ansible.builtin.service:
+    name: memcached
+    state: started
+    enabled: true
+
+- name: Configure Memcached to listen on port 11211
+  ansible.builtin.shell: "memcached -p 11211 -U 11111 -u memcached -d"
+  args:
+    creates: "/var/run/memcached/memcached.pid"
+  notify: restart memcached
+
+- name: Allow Memcached access on port 11211
+  ansible.builtin.firewalld:
+    port: 11211/tcp
+    permanent: true
+    state: enabled
+  notify: reload firewall
+
+
+# tasks file for roles/memcache_setup

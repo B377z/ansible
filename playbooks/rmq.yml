@@ -1,0 +1,138 @@
+---
+- hosts: rmq01
+  gather_facts: true
+  become: true
+  vars:
+    - ip_hostname_mapping:
+      - { ip: '172.16.1.16', hostname: 'web01' }
+      - { ip: '172.16.1.17', hostname: 'app01' }
+      - { ip: '172.16.1.18', hostname: 'rmq01' }
+      - { ip: '172.16.1.19', hostname: 'mc01' }
+      - { ip: '172.16.1.20', hostname: 'db01' }
+      - { ip: '172.16.1.167', hostname: 'tfdhomesvr' }
+
+    - vagrant_home: '/home/vagrant'
+  tasks:
+    - name: Ensure host entries are set
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ item.ip }} {{ item.hostname }}"
+      state: present
+      loop: "{{ ip_hostname_mapping }}"
+
+    - name: Update yum cache
+      ansible.builtin.yum:
+        update_cache: yes
+    
+    - name: Update System with latest packages
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+
+    - name: Check if EPEL repo is installed
+      ansible.builtin.command: 'yum repolist enabled | grep epel'
+      register: epel_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Ensure EPEL Repository is installed
+      ansible.builtin.yum:
+        name: 'epel-release'
+        state: present
+      when: epel_check.rc != 0  
+
+    - name: Install Dependencies
+      ansible.builtin.yum:
+        name:
+          - wget
+        state: present
+      tags:
+        - install_dependencies
+    
+    - name: Download Erlang Solutions repository RPM
+      ansible.builtin.get_url:
+        url: http://packages.erlang-solutions.com/erlang-solutions-2.0-1.noarch.rpm
+        dest: "{{ vagrant_home }}/erlang-solutions-2.0-1.noarch.rpm"
+      tags:
+        - install_dependencies
+
+    - name: Install Erlang Solutions repository
+      ansible.builtin.rpm_key:
+        state: present
+        key: "{{ vagrant_home }}/erlang-solutions-2.0-1.noarch.rpm"
+      tags:
+        - install_dependencies
+
+    - name: Install Erlang and socat
+      ansible.builtin.yum:
+        name:
+          - erlang
+          - socat
+        state: present
+      tags:
+        - install_dependencies
+
+    - name: Add RabbitMQ Repository
+      ansible.builtin.shell: curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | sudo bash
+      tags:
+        - install_rabbitmq
+
+    - name: Install RabbitMQ Server
+      ansible.builtin.yum:
+        name: rabbitmq-server
+        state: present  # Ensure the package is present
+      tags:
+        - install_rabbitmq
+
+    - name: Check RabbitMQ Server Status
+      ansible.builtin.command: systemctl status rabbitmq-server
+      register: rabbitmq_status
+      ignore_errors: yes  # Ignore errors to prevent playbook failure if RabbitMQ is not running
+
+    - name: Display RabbitMQ Status
+      ansible.builtin.debug:
+        var: rabbitmq_status.stdout_lines
+      when: rabbitmq_status.rc == 0
+      tags:
+        - check_rabbitmq_status
+
+    - name: Create RabbitMQ Configuration File
+      ansible.builtin.copy:
+        content: |
+          [{rabbit, [{loopback_users, []}]}].
+        dest: /etc/rabbitmq/rabbitmq.config
+      tags:
+        - configure_rabbitmq
+
+    - name: Create RabbitMQ User
+      ansible.builtin.command: rabbitmqctl add_user test test
+      ignore_errors: yes  # Ignore errors if the user already exists
+      tags:
+        - create_rabbitmq_user
+
+    - name: Set RabbitMQ User Tags
+      ansible.builtin.command: rabbitmqctl set_user_tags test administrator
+      tags:
+        - set_rabbitmq_user_tags
+      notify:
+        - Restart RabbitMQ Service
+
+  handlers:
+    - name: Restart RabbitMQ Service
+      ansible.builtin.service:
+        name: rabbitmq-server
+        state: started
+      tags:
+        - start_rabbitmq
+      notify:
+        - Enable RabbitMQ Service
+
+    - name: Enable RabbitMQ Service
+      ansible.builtin.service:
+        name: rabbitmq-server
+        enabled: yes
+      tags:
+        - enable_rabbitmq
+
+
+    
